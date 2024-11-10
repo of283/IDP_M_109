@@ -2,11 +2,11 @@
 #include "Offset.h"
 
 /*Navigation*/
-int get_dir(int dir, int global) {
+int get_dir(int dir, int global) {//returns the direction with respect to the robots current orientation given the global orientation as explained in the map
   switch (global) {
-    case 0:
+    case 0://straight down
       return dir;
-    case 1:
+    case 1://facing direction 1
       switch (dir) {
         case 0: return 2;
         case 1: return 0;
@@ -30,7 +30,7 @@ int get_dir(int dir, int global) {
   }
 }
 
-int Navigate(int start,int destination)
+int Navigate(int start,int destination) //this initially starts with Dijkstra's shortest path algorithm, outlined in documentation
 {
   bool Visited[22] = {false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false};//hasnt visited any nodes yet
   Visited[start] = true;
@@ -48,17 +48,17 @@ int Navigate(int start,int destination)
     NextNode = 255; //placeholder NextNode
     for (int j = 0; j < 22 ; j++)
     {
-      if (navMatrix[0][currentNode][j] > 0)
+      if (navMatrix[0][currentNode][j] > 0) //is node connected?
       {
-        if (distanceToCurrent + 1 < result[0][j])
+        if (distanceToCurrent + 1 < result[0][j]) //is path from current -> j shorter than the previous shortest path to j
         {
-          result[1][j] = currentNode;
-          result[0][j] = 1 + distanceToCurrent; //update shortest distance to all adjacent nodes
+          result[1][j] = currentNode; //update previous node to current if distance is shorter to node j
+          result[0][j] = 1 + distanceToCurrent; //update shortest distance to all adjacent nodes if the route to node j is less than the previous shortest route
         }
       }
     }
     for (int k = 0; k < 22; k++){
-      if ((result[0][k] < distanceToNext) && (!Visited[k])){
+      if ((result[0][k] < distanceToNext) && (!Visited[k])){ //set next node to the closest non visited node to the start
         distanceToNext = result[0][k];
         NextNode = k;
       }
@@ -66,6 +66,7 @@ int Navigate(int start,int destination)
     Visited[NextNode] = true;
     delay(10);
   }
+  //this adds the previous nodes (starting from destination) to an array backwards to create a data structure similar to a stack - each subsequent node can be reached in order
   byte len = result[0][destination];
   byte order[len+1];
   order[len] = destination;
@@ -79,11 +80,11 @@ int Navigate(int start,int destination)
     delay(10);
     active = order[i];
     byte local_dir = navMatrix[1][active][order[i+1]];
-    byte dir = get_dir(local_dir, global_dir);
+    byte dir = get_dir(local_dir, global_dir);//call function to get local direction for robot
     byte delta = global_dir;
     if (dir == 0){
       dforwards(255);
-      if (order[i+1] != 0) forwards(normal_speed);
+      if (order[i+1] != 0) forwards(normal_speed); //checks if we are entering the contaminated area - if we are then the robot must go forwards for 5x dforwards instead of reaching the next junction
       else{
         for (int i = 0; i < 5; i++){
           dforwards(255);
@@ -92,7 +93,7 @@ int Navigate(int start,int destination)
     }
     else if(dir == 1){
       turn_left();
-      dforwards(normal_speed);
+      dforwards(normal_speed); //this gets the agv over the junction - ensuring that the line sensors arent trggered 2x by any 1 junction
       if ((order[i+1] != 15) && (order[i+1] != 17)) forwards(normal_speed);
       else servo1.write(open);
       if (global_dir == 0) delta = 1;
@@ -131,9 +132,9 @@ void restore_motors()  // returns all the motors to their normal speeds and dire
   motor2->run(RELEASE);
 }
 
-void autocorrect(bool clock)  // this function actually makes the AGV autocorrect L/R. It is of much smaller amplitude than the 90 degree functions and is currently untested - 16/10/24
+void autocorrect(bool clock)  // this function actually makes the AGV autocorrect L/R. It adjusts the relative speeds of the wheel to make it move back towards the line until the sensors arent triggered again
 {
-  int other_speed = normal_speed * 5 / 8;  // makes the speed of the non-dominant motor 3/4 of turning_speed
+  int other_speed = normal_speed * 5 / 8;  // makes the speed of the non-dominant motor 5/8 of turning_speed
   //Serial.println(other_speed);
   byte LM = digitalRead(LMlinesensorPin);
   byte RM = digitalRead(RMlinesensorPin);
@@ -175,11 +176,11 @@ void line_following()  // this is the function that actually make the AGV follow
   int valRR = digitalRead(RRlinesensorPin);  // reads the RR input value
   //check inside sensors
 
-  if (valLM) autocorrect(1);
+  if (valLM) autocorrect(1); //1 or 0 depends on which side of the line the robot has gone off of
   else if (valRM) autocorrect(0);
 }
 
-bool not_junction() {  //func checks if the junction detection sensors have been triggered
+bool not_junction() {  //func checks if the junction detection sensors have been triggered - returns true if we are NOT at a junction - if(not_junction()) will run until junction reached
   bool LL = digitalRead(LLlinesensorPin);
   bool RR = digitalRead(RRlinesensorPin);
   if (LL || RR) return false;
@@ -199,7 +200,7 @@ void forwards(int speed)  // this code just moves the AGV forwards at it's norma
   restore_motors();
 }
 
-void dforwards(byte speed) {
+void dforwards(byte speed) { //move a small increment forwards
   motor1->run(FORWARD);
   motor2->run(FORWARD);
   motor1->setSpeed(speed);
@@ -218,10 +219,6 @@ void backwards(int speed)  // this code just moves the AGV backwards at it's nor
     flashblue();
   }
   restore_motors();
-
-  //dforwards(255);
-  // this has been added by oscar to counteract the fact that now the junction sensors are BEHIND the motors so they reach the junction after the
-  //restore_motors();
 }
 
 void dbackwards(byte speed) {
@@ -241,14 +238,13 @@ void turn_left() {
   motor1->setSpeed(turning_speed);
   motor2->setSpeed(turning_speed);
 
-  delay(1200);                          // spare time for the RR line sensor to leave the white line
+  delay(1200);                         // spare time for the line sensors to leave the white line - this avoids the agv thinking it has finished the turn early
   while (S < 1) {                      // this loop continuously checks if the furthest line sensor has found the white line again so it knows when the turn is finished
-    S = digitalRead(RMlinesensorPin);  // reads the RR input value
+    S = digitalRead(RMlinesensorPin);  // reads the RM input value
     flashblue();
   };                                   // wait until the sensor detects white line again
 
-  delay(TURN_LEFT_EXDELAY);  //small extra turning
-  // this little cluster of code makes the robot move off of the junction so it doesn't get confused
+  delay(TURN_LEFT_EXDELAY);  //small extra turning - accounts for differences in motors during testing so can be set to 0 if no extra delay is required
   restore_motors();
   motor1->run(FORWARD);
   motor2->run(FORWARD);
@@ -266,11 +262,11 @@ void turn_right() {
   motor1->setSpeed(turning_speed);
   motor2->setSpeed(TURN_RIGHT_MOTER2);
 
-  delay(1200);  // spare time for the LL line sensor to leave the white line
+  delay(1200);  // spare time for the line sensor to leave the white line
 
   while (S < 1) {     
     flashblue();                 // this loop continuously checks if the furthest line sensor has found the white line again so it knows when the turn is finished
-    S = digitalRead(LMlinesensorPin);  // reads the RR input value
+    S = digitalRead(LMlinesensorPin);  // reads the LM input value
   }
 
   delay(TURN_RIGHT_EXDELAY);  //delay to keep turning onto line
@@ -298,7 +294,7 @@ void flashgreen()
   digitalWrite(ledgreen, LOW);
 }
 
-void flashblue()
+void flashblue() //this function is called periodically in all major loops and checks how long it has been since the light was flashed last - by adjusting the dt value the approximate frequency can be varied. extra function calls can be added to make this more accurate
 {
   t2 = millis();
   dt = t2  - t1;
@@ -315,7 +311,7 @@ void flashblue()
   }
 }
 
-float get_distance()
+float get_distance() //read distance from ultrasonic sensor
 {
  sensity_t = analogRead(dsensor); // read the value from the sensor:
  return sensity_t * MAX_RANG / ADC_SOLUTION; // calculate distance
@@ -335,20 +331,20 @@ bool magnetic() //returns true or false from magnet sensor
   
 }
 
-void grab()
+void grab() //note - grabber must be in lifted position before this function is called
 {
   dist_t = get_distance();
-  while (dist_t > 5) //gets in range
+  while (dist_t > 5) //gets in range of the box
   {
     dforwards(200);
-    if (p==3) line_following();
+    if (p==3) line_following(); //this only line follows on the longest pick up - linefollowing doesnt check the distance so can result in a box being missed
     dist_t = get_distance();
     flashblue();
   }
   p++;
   servo1.write(close);
   delay(1000);
-  magbool = magnetic(); //checking if magnetic and responds with led flash
+  magbool = magnetic(); //checking if magnetic and responds with led flash of the correct colour
   if (magbool == true)
   {
     flashred(); 
@@ -365,7 +361,7 @@ void ungrab()
   delay(1000);
 }
 
-void start_movement() // this code moves the robot forwards from the starting box onto the first line
+void start_movement() // this code moves the robot forwards from the starting box onto the first line since there is no line to follow initially
 {
   int starting_speed = 150; // sets the speed at the start of the program to be less than the normal speed
 
@@ -385,7 +381,6 @@ void start_movement() // this code moves the robot forwards from the starting bo
     S4 = digitalRead(RRlinesensorPin);
   }
 
-  //first_movement = false;
 
   dforwards(normal_speed);  // now we hope that the line is in the center of that edge so we move forwards for a small amount of time to clear the edge
   restore_motors(); // stops the robot from moving
@@ -481,17 +476,17 @@ void setup() {
 
   if (!AFMS.begin())  //if cant start flag error
   {
-    Serial.println("Could not find Motor Shield. Check wiring.");
+    Serial.println("Could not find Motor Shield. Check wiring."); //serial print for errors
     while (1);
   }
-  Serial.println("***PROGRAM BEGIN***");
+  Serial.println("***PROGRAM BEGIN***"); //this clears nonsense characters from serial during setup to avoid confusion
   int button = 0;
   servo1.write(open);
-  while (!button){
+  while (!button){ //wait for button press to start - is trapped in this loop until the button is pressed
     button = digitalRead(PTM);
   }
-  start_movement();
-  IDP();
+  start_movement(); //leave box
+  IDP(); //call main IDP function
 }
 
 void loop() {
