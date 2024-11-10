@@ -20,15 +20,15 @@ byte RRlinesensorPin = 4;  // Connect sensor to input pin 4
 byte ledgreen = 12;
 byte ledred = 11;
 byte ledblue = 2;
-byte dsensor = A1;
+byte dsensor = A1; //analog pin for distance sensor
 byte magnet = 3;
-byte PTM = 5;
+byte PTM = 5; //button pin to turn on robot
 
 int magval = 0;   // variable for reading the magnetic
 int grabbed = 0;  //1 means has a package and 0 not
 int noforwards = 0;
 int close = 100;  //servo closed position
-int almost_closed = 90;
+int almost_closed = 90; //almost closed - this allows the grabber to get over the lip into the contaminated area
 int open = 0;     //servo opened position
 float dist_t = 0;
 float sensity_t = 0;
@@ -41,7 +41,7 @@ byte normal_speed = 255;   // Sets the speed for the AGV when not turning
 
 byte navMatrix[2][22][22] = 
 {//1st index = table, 2nd index = row, 3rd index = column
-    {//adjacency matrix for all important points on the board
+    {//adjacency matrix for all important points on the board - this can be varied for any configuration of board however does require several array lengths in the Navigate function in oct31.ino to be changed as well 
       {0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0},
@@ -65,7 +65,7 @@ byte navMatrix[2][22][22] =
       {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1},
       {0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0}
     },
-    {//will be updated with directions to turn -> Straight ahead = 0, Left = 1, Right = 2, Reciprocate = 3, wrt global_dir
+    {//will be updated with directions to turn -> Straight ahead = 0, Left = 1, Right = 2, Reciprocate = 3, with respect to global_dir
       {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
       {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
@@ -92,7 +92,7 @@ byte navMatrix[2][22][22] =
 };
 
 
-byte global_dir = 0;  //0 = down graph, 1 = left, 2 = right, 3 = up
+byte global_dir = 0;  //0 = down graph, 1 = left, 2 = right, 3 = up - this stores the current orientation of the robot
 
 byte active;
 #endif
