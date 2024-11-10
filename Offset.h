@@ -1,6 +1,6 @@
 #ifndef OFFSET_H
 #define OFFSET_H
-
+//this fule was created because of issues with the speeds of the motors relative to eachother varying slightly and is used to tune so that the motors turn at the same speeds in various functions
 //backwards and dbackwards
 #define BACK_MOTER1 1.05 // The scale factor for motor1
 
